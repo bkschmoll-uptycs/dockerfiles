@@ -1,9 +1,9 @@
+from sane_doc_reports import utils
 from sane_doc_reports.domain.CellObject import CellObject
 from sane_doc_reports.domain.Element import Element
 from sane_doc_reports.conf import DEBUG, TREND_MAIN_NUMBER_FONT_SIZE, \
     ALIGN_RIGHT, TREND_SECOND_NUMBER_FONT_SIZE, PYDOCX_FONT_SIZE, \
     PYDOCX_TEXT_ALIGN
-from sane_doc_reports.elements import error
 from sane_doc_reports.populate.utils import insert_text
 from sane_doc_reports.styles.utils import style_cell
 
@@ -45,12 +45,18 @@ class TrendElement(Element):
 
         change = (current_sum * 100) / previous_sum
         if change < 0:
-            direction = '⏷'  # Down arrow
+            direction = '▼'  # Down arrow
         elif change == 0:
             direction = '= '
         else:
-            direction = '⏶'  # Up arrow
+            direction = '▲'  # Up arrow
 
+        if change > 999.0:
+            change = '> 999'
+        elif change < -999.0:
+            change = '< -999'
+        else:
+            change = "{0:.2f}".format(change)
         value_percent = f'{direction}{change}%'
         inner_cell = table.cell(0, 2)
         style_cell(inner_cell)
@@ -68,7 +74,7 @@ class TrendElement(Element):
 
 def invoke(cell_object, section):
     if section.type != 'trend':
-        section.contents = f'Called trend but not trend -  [{section}]'
-        return error.invoke(cell_object, section)
+        err_msg = f'Called trend but not trend -  [{section}]'
+        return utils.insert_error(cell_object, err_msg)
 
     TrendElement(cell_object, section).insert()

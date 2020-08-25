@@ -5,6 +5,7 @@ from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
 
+
 def _insert_paragraph_after(paragraph, text=None, style=None):
     """Insert a new paragraph after the given paragraph."""
     new_paragraph_oxml = OxmlElement("w:p")
@@ -23,12 +24,16 @@ class CellObject(object):
      - run (holds: text, pictures, text-styling (font))
      """
 
-    def __init__(self, cell, add_run=True):
+    def __init__(self, cell, add_run=True, grid_position=None, paper_size=None,
+                 orientation=None):
         self.cell = cell
 
         cell_paragraph, cell_run = self._get_cell_wrappers(add_run=add_run)
         self.paragraph = cell_paragraph
         self.run = cell_run
+        self.grid_position = grid_position
+        self.paper_size = paper_size
+        self.orientation = orientation
 
     def _get_cell_wrappers(self, add_run=True) -> Tuple[
         Paragraph, Union[Run, None]]:

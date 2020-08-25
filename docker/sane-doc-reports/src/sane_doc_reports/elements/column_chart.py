@@ -5,11 +5,11 @@ from sane_doc_reports.domain.Element import Element
 from sane_doc_reports.domain.Section import Section
 from sane_doc_reports.conf import DEBUG, DEFAULT_BAR_WIDTH, \
     DEFAULT_BAR_ALPHA, CHART_LABEL_NONE_STRING, \
-    DEFAULT_FONT_COLOR, DEFAULT_TITLE_FONT_SIZE
-from sane_doc_reports.elements import image, error
+    DEFAULT_FONT_COLOR, DEFAULT_TITLE_FONT_SIZE, LEGEND_STYLE
+from sane_doc_reports.elements import image
 from sane_doc_reports.styles.colors import get_colors
 from sane_doc_reports.utils import set_legend_style, remove_plot_borders, \
-    get_chart_font, set_axis_font
+    get_chart_font, set_axis_font, change_legend_vertical_alignment
 
 
 class ColumnChartElement(Element):
@@ -30,7 +30,8 @@ class ColumnChartElement(Element):
             print("Adding a column chart!")
 
         # Fix sizing
-        size_w, size_h, dpi = utils.convert_plt_size(self.section)
+        size_w, size_h, dpi = utils.convert_plt_size(self.section,
+                                                     self.cell_object)
         plt.figure(figsize=(size_w, size_h), dpi=dpi)
 
         data = self.section.contents
@@ -61,7 +62,8 @@ class ColumnChartElement(Element):
                       bbox_to_anchor=legend_location_relative_to_graph,
                       handlelength=0.7)
 
-        set_legend_style(a)
+        self.section = change_legend_vertical_alignment(self.section, top=3)
+        set_legend_style(a, self.section.layout[LEGEND_STYLE])
 
         ax.set_xlim(-len(objects), len(objects))
 
@@ -69,16 +71,16 @@ class ColumnChartElement(Element):
         plt.xticks(y_axis, objects)
         plt.title(self.section.extra['title'], **self.style['title'])
 
-        plt_b64 = utils.plt_t0_b64(plt)
+        plt_b64 = utils.plt_t0_b64(plt, (size_w, size_h), dpi)
 
-        s = Section('image', plt_b64, {}, {})
+        s = Section('image', plt_b64, {}, {'should_shrink': True})
         image.invoke(self.cell_object, s)
 
 
 def invoke(cell_object, section):
     if section.type != 'column_chart':
-        section.contents = 'Called column_chart but not column_chart - ' + \
+        err_msg = 'Called column_chart but not column_chart - ' + \
                            f'[{section}]'
-        return error.invoke(cell_object, section)
+        return utils.insert_error(cell_object, err_msg)
 
     ColumnChartElement(cell_object, section).insert()

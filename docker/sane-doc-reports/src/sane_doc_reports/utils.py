@@ -1,21 +1,32 @@
 import base64
 import re
+import subprocess
+import os
 import tempfile
 from io import BytesIO
 import importlib
 from pathlib import Path
+import traceback
+from typing import List
+from shutil import which
 
+import arrow
 from docx.oxml import OxmlElement
 import matplotlib
 from docx.text.paragraph import Paragraph
 from matplotlib import pyplot as plt
 import matplotlib.font_manager as fm
+import matplotlib.ticker as mticker
 
 from sane_doc_reports.domain import CellObject, Section
+from sane_doc_reports.domain.Section import Section as SectionFactory
 from sane_doc_reports.conf import SIZE_H_INCHES, SIZE_W_INCHES, \
     DEFAULT_DPI, DEFAULT_LEGEND_FONT_SIZE, DEFAULT_WORD_FONT, \
     DEFAULT_ALPHA, DEFAULT_FONT_COLOR, DEFAULT_WORD_FONT_FALLBACK, \
-    DEFAULT_FONT_AXIS_COLOR
+    DEFAULT_FONT_AXIS_COLOR, LEGEND_STYLE, DEBUG, WIDTH_POSITION_KEY, \
+    HEIGHT_POSITION_KEY, A3_MM_WIDTH, A4_MM_WIDTH, A4_MM_HEIGHT, \
+    LETTER_MM_HEIGHT, LETTER_MM_WIDTH, A3_MM_HEIGHT, MAX_AXIS_LABELS, \
+    RESIZE_PLOT_ITEMS_AMOUNT_THRESHOLD
 
 
 def open_b64_image(image_base64):
@@ -30,8 +41,33 @@ def open_b64_image(image_base64):
     return f
 
 
+def fix_svg_to_png(contents):
+    if which('svgexport') is None:
+        raise Exception('svgexport is not found!')
+
+    tmp_image = open_b64_image(contents)
+    tmp_path = '/tmp/_tmp.svg'
+    with open(tmp_path, 'wb') as out:
+        out.write(tmp_image.read())
+
+    out_path = '/tmp/_out.png'
+    out = subprocess.run(['svgexport', tmp_path, out_path], stdout=subprocess.DEVNULL,
+                         stderr=subprocess.STDOUT, check=True)
+
+    if DEBUG:
+        print("[Sane-doc-reports] Svg conversion output: ", out)
+
+    outf = BytesIO()
+    with open(out_path, 'rb') as of:
+        outf.write(of.read())
+
+    os.remove(tmp_path)
+    os.remove(out_path)
+    return outf
+
+
 def insert_by_type(type: str, cell_object: CellObject,
-                   section: Section):
+                   section: Section, trace=False):
     """ Call a elements elemnt's insert method """
     try:
         func = importlib.import_module(f'sane_doc_reports.elements.{type}')
@@ -39,6 +75,23 @@ def insert_by_type(type: str, cell_object: CellObject,
     except ModuleNotFoundError:
         import sane_doc_reports.elements.unimplemented as unimplemented
         unimplemented.invoke(cell_object, section)
+    except Exception as e:
+        # We want to have a graceful failure instead of early quitting.
+        # Maybe we can "salvage" other elements that were generated
+        # without any exceptions. Here we will display the faulty
+        # elements in the doc.
+        if DEBUG:
+            traceback.print_exc()
+        trace_str = f'\n({traceback.format_exc()})' if trace else ''
+        error_msg = f'{section.type} had an error: `{repr(e)}`{trace_str}'
+        insert_error(cell_object, error_msg)
+
+
+def insert_error(cell_object, error_msg):
+    from sane_doc_reports.elements import error
+    """ Insert an error element """
+    section = SectionFactory("error", error_msg, {}, {}, {})
+    error.invoke(cell_object, section)
 
 
 def _insert_paragraph_after(paragraph):
@@ -67,7 +120,10 @@ def plot(func):
     """ A decorator used to clear and resize each chart """
 
     def wrapper(*args, **kwargs):
+        if plt:
+            plt.close()
         plt.clf()
+        plt.cla()
         # Fix cropping of plot
         plt.rcParams['figure.constrained_layout.use'] = True
         func(*args, **kwargs)
@@ -75,13 +131,19 @@ def plot(func):
     return wrapper
 
 
-def plt_t0_b64(plt: matplotlib.pyplot):
+def plt_t0_b64(plt: matplotlib.pyplot, figsize=None, dpi=None):
     """ Matplotlib to base64 url """
     path = Path(tempfile.mkdtemp()) / Path(
         next(tempfile._get_candidate_names()) + '.png')
 
-    plt.savefig(str(path), format='png', bbox_inches='tight', figsize=(1, 1),
-                dpi=DEFAULT_DPI)
+    figsize = figsize if figsize else (1, 1)
+    dpi = dpi if dpi else DEFAULT_DPI
+
+    # Remove paddings
+    plt.tight_layout()
+
+    plt.savefig(str(path), format='png', figsize=figsize,
+                dpi=dpi)
 
     with open(str(path), "rb") as f:
         img_base64 = base64.b64encode(f.read()).decode("utf-8", "ignore")
@@ -91,13 +153,49 @@ def plt_t0_b64(plt: matplotlib.pyplot):
     return b64
 
 
-def convert_plt_size(section: Section):
+def has_anomalies(items: List):
+    return max(items) / min(items) > RESIZE_PLOT_ITEMS_AMOUNT_THRESHOLD
+
+
+def convert_plt_size(section: Section, cell_object: CellObject,
+                     has_anomalies=False):
     """ Convert the plot size from pixels to word """
     size_w, size_h, dpi = (SIZE_W_INCHES, SIZE_H_INCHES, DEFAULT_DPI)
-    if 'dimensions' in section.layout:
-        h = section.layout['dimensions']['height'] / DEFAULT_DPI
-        w = section.layout['dimensions']['width'] / DEFAULT_DPI
-        size_w, size_h, dpi = (w, h, DEFAULT_DPI)
+
+    if WIDTH_POSITION_KEY in section.layout and HEIGHT_POSITION_KEY in section.layout:
+        # We need to get the size in inches.
+        # w & h are the width in grid size in the word - we need to convert them
+        # to inches.
+        # ratio in inches: (width_size_in_inches / 12)
+        #   Width in inches: w * ratio_in_inches
+
+        sizes = {
+            'A4': {
+                'portrait': A4_MM_WIDTH.inches,
+                'landscape': A4_MM_HEIGHT.inches
+            },
+            'A3': {
+                'portrait': A3_MM_WIDTH.inches,
+                'landscape': A3_MM_HEIGHT.inches
+            },
+            'LETTER': {
+                'portrait': LETTER_MM_WIDTH.inches,
+                'landscape': LETTER_MM_HEIGHT.inches
+            }
+        }
+        page_size = sizes['A4'] if not cell_object.paper_size else \
+            sizes[cell_object.paper_size]
+        page_orientation = 'portrait' if not cell_object.orientation else \
+            cell_object.orientation
+
+        width_size_in_inches = page_size[page_orientation]
+        ratio_w = width_size_in_inches / 12
+        w = int(section.layout[WIDTH_POSITION_KEY])
+        size_w = (ratio_w * w)
+
+    if has_anomalies:
+        size_w += 1
+        size_h += 1
 
     return size_w, size_h, dpi
 
@@ -115,7 +213,7 @@ def get_ax_location(legend_style):
     return f'{vertical_align} {align}'
 
 
-def get_current_li(extra, list_type):
+def get_current_li(extra, list_type='List Number'):
     """ Return the current list item style and indent level """
     list_type = list_type if 'list_type' not in extra else extra['list_type']
     if not extra or 'list_level' not in extra:
@@ -126,6 +224,11 @@ def get_current_li(extra, list_type):
     if extra_list_level == 0:
         list_level = 2
         p_style = list_type
+    elif extra_list_level > 3:
+        # The docx template doesn't support more than
+        #   4 levels of indentation.
+        list_level = 4
+        p_style = f'{list_type} {list_level}'
     elif extra_list_level > 0:
         list_level += extra['list_level'] + 1
         p_style = f'{list_type} {list_level}'
@@ -212,7 +315,26 @@ def set_axis_font(ax):
         label.set_fontproperties(font)
 
 
-def set_legend_style(legend):
+def set_legend_max_count(ax, cell_object: CellObject):
+    g_pos = cell_object.grid_position
+    width_ratio = g_pos['width'] / g_pos['global_cols']
+    axis_count = MAX_AXIS_LABELS
+    if width_ratio <= 0.2:
+        axis_count = MAX_AXIS_LABELS / 4
+    elif width_ratio < 0.6:
+        axis_count = MAX_AXIS_LABELS / 2
+
+    myLocator = mticker.MaxNLocator(axis_count)
+    ax.xaxis.set_major_locator(myLocator)
+
+
+def set_legend_style(legend, options=None):
+    plt.gcf().autofmt_xdate()
+    if options:
+        if 'hideLegend' in options and options['hideLegend']:
+            plt.gca().legend().set_visible(False)
+            return
+
     legend.get_frame().set_alpha(DEFAULT_ALPHA)
     legend.get_frame().set_linewidth(0.0)
 
@@ -222,6 +344,13 @@ def set_legend_style(legend):
     for text in legend.get_texts():
         text.set_fontproperties(font)
         text.set_color(DEFAULT_FONT_COLOR)
+        if 'valign' in options:
+            text.set_position((0, options['valign']))
+
+
+def change_legend_vertical_alignment(section: Section, top=0):
+    section.layout[LEGEND_STYLE]['valign'] = top
+    return section
 
 
 def get_chart_font():
@@ -230,3 +359,26 @@ def get_chart_font():
     if DEFAULT_WORD_FONT not in names:
         return DEFAULT_WORD_FONT_FALLBACK
     return DEFAULT_WORD_FONT
+
+
+def get_formatted_date(input_date,
+                       layout=None) -> str:
+    """ Returns the formatted date string
+            input_date - date we want to format
+            layout - custom formats from the sane JSONs
+
+        Note: ParserError is raised and should be catched if used.
+    """
+    date = arrow.now()
+
+    # Use the date if supplied, and not now()
+    if input_date:
+        date = arrow.get(input_date)
+
+    formatted_date = date.isoformat()
+
+    # Use the user supplied format
+    if layout and 'format' in layout:
+        formatted_date = date.format(layout['format'])
+
+    return formatted_date

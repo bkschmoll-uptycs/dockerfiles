@@ -7,7 +7,19 @@ from sane_doc_reports.transform.markdown.md_helpers import \
 
 def test_markdown_to_html_none():
     md_input = None
-    ex_output = '<span> </span>'
+    ex_output = MD_EMPTY
+    assert markdown_to_html(md_input) == ex_output
+
+
+def test_markdown_to_html_empty_string():
+    md_input = ' '
+    ex_output = MD_EMPTY
+    assert markdown_to_html(md_input) == ex_output
+
+
+def test_markdown_to_html_multiple_empty_string():
+    md_input = '   '
+    ex_output = MD_EMPTY
     assert markdown_to_html(md_input) == ex_output
 
 
@@ -85,6 +97,22 @@ def test_markdown_to_html_text_styles():
 
     md_input = '- *test*'
     ex_output = '<ul><li><em>test</em></li></ul>'
+    assert markdown_to_html(md_input) == ex_output
+
+
+def test_markdown_to_html_md_button():
+    md_input = '%%%{"message":"hi 1", "action":"Print", "params": {"value": "we are the best"}}%%%'
+    ex_output = '<p><p>hi 1</p></p>'
+    assert markdown_to_html(md_input) == ex_output
+
+    inner = '{\'message":"hi 1", "action":"Print", "params": {"value": "we are the best"}}'
+    md_input = f'%%%{inner}%%%'
+    ex_output = f'<p><p>{inner}</p></p>'
+    assert markdown_to_html(md_input) == ex_output
+
+    inner = '123123'
+    md_input = f'%%%{inner}%%%'
+    ex_output = f'<p><p>{inner}</p></p>'
     assert markdown_to_html(md_input) == ex_output
 
 
@@ -678,3 +706,78 @@ def test_markdown_to_section_list_quote():
         ], 'attrs': [], 'extra': {}, 'layout': {}
     }]
     assert res == expected
+
+
+def test_build_dict_mdhtml_br():
+    markdown_string = '<span>123<br>456<br />789</span>'
+    html = markdown_to_html(markdown_string).strip()
+    root_elem = PyQuery(html)
+    res = build_dict_from_sane_json(root_elem)
+    expected = {'attrs': [],
+                'contents': [{'attrs': [],
+                              'contents': [{'attrs': [],
+                                            'contents': '123',
+                                            'extra': {},
+                                            'layout': {},
+                                            'type': 'span'},
+                                           {'attrs': [],
+                                            'contents': '\n',
+                                            'extra': {},
+                                            'layout': {},
+                                            'type': 'span'},
+                                           {'attrs': [],
+                                            'contents': '456',
+                                            'extra': {},
+                                            'layout': {},
+                                            'type': 'span'},
+                                           {'attrs': [],
+                                            'contents': '\n',
+                                            'extra': {},
+                                            'layout': {},
+                                            'type': 'span'},
+                                           {'attrs': [],
+                                            'contents': '789',
+                                            'extra': {},
+                                            'layout': {},
+                                            'type': 'span'}],
+                              'extra': {},
+                              'layout': {},
+                              'type': 'span'}],
+                'extra': {},
+                'layout': {},
+                'type': 'p'}
+    assert res == expected
+
+
+def test_build_dict_mdhtml():
+    markdown_string = '<span><b>one</b><strong>two</stong></span>'
+    html = markdown_to_html(markdown_string).strip()
+    root_elem = PyQuery(html)
+    res = build_dict_from_sane_json(root_elem)
+    expected = {'attrs': [],
+                'contents': [{'attrs': [],
+                              'contents': [{'attrs': [],
+                                            'contents': [{'attrs': [],
+                                                          'contents': 'one',
+                                                          'extra': {},
+                                                          'layout': {},
+                                                          'type': 'strong'}],
+                                            'extra': {},
+                                            'layout': {},
+                                            'type': 'span'},
+                                           {'attrs': [],
+                                            'contents': [{'attrs': [],
+                                                          'contents': 'two',
+                                                          'extra': {},
+                                                          'layout': {},
+                                                          'type': 'strong'}],
+                                            'extra': {},
+                                            'layout': {},
+                                            'type': 'span'}],
+                              'extra': {},
+                              'layout': {},
+                              'type': 'span'}],
+                'extra': {},
+                'layout': {}, 'type': 'p'}
+    assert res == expected
+

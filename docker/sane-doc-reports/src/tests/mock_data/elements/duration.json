@@ -18,11 +18,13 @@
       },
       "columnPos": 0,
       "h": 1,
-      "i": "756b53d0-7d29-11e9-ac33-dbeb1078424e",
-      "rowPos": 4,
+      "i": "69b83100-da27-11ea-b29f-7d921b405cc8",
+      "legend": null,
+      "rowPos": 0,
       "w": 12
     },
-    "fromDate": "2019-05-16T15:06:32+03:00",
-    "title": "Average Response Time"
+    "title": "Mean Time to Resolution (Occurred)",
+    "emptyNotification": "No results found",
+    "titleStyle": null
   }
 ]

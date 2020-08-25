@@ -37,6 +37,9 @@ cat >> $DEPNDABOT_CONF <<- EOM
   - package_manager: python
     directory: /$1
     update_schedule: live
+    automerged_updates:
+    - match:
+        update_type: semver:minor
 EOM
     fi
 fi
@@ -59,7 +62,7 @@ EOM
 cat >> $DEPNDABOT_CONF <<- EOM
   - package_manager: docker
     directory: /$1
-    update_schedule: daily $AUTO_MERGE
+    update_schedule: daily$AUTO_MERGE
 
 EOM
 fi

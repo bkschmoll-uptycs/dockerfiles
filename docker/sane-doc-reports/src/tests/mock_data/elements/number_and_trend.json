@@ -5,16 +5,15 @@
     "layout": {
       "columnPos": 5,
       "h": 2,
-      "i": "1d30ce90-64ef-11e9-8ee3-b5b70ad799cb",
       "layout": "horizontal",
       "rowPos": 2,
-      "sign": "",
+      "sign": "%",
       "signAlignment": "left",
       "style": {},
       "w": 4
     },
     "fromDate": "2019-04-15T14:10:59+03:00",
-    "title": "Active Incidents - Line chart"
+    "title": "Things - Line chart"
   },
   {
     "type": "trend",
@@ -25,7 +24,6 @@
     "layout": {
       "columnPos": 6,
       "h": 2,
-      "i": "2ff90100-64ef-11e9-8ee3-b5b70ad799cb",
       "layout": "horizontal",
       "rowPos": 0,
       "sign": "",
@@ -34,6 +32,63 @@
       "w": 3
     },
     "fromDate": "2019-04-15T14:10:59+03:00",
-    "title": "Incidents By Close Reason"
+    "title": "By Someone"
+  },
+  {
+    "type": "trend",
+    "data": {
+      "currSum": 3.14159,
+      "prevSum": 3.13371
+    },
+    "layout": {
+      "columnPos": 0,
+      "h": 2,
+      "layout": "horizontal",
+      "rowPos": 1,
+      "sign": "",
+      "signAlignment": "left",
+      "style": {},
+      "w": 3
+    },
+    "fromDate": "2019-04-15T14:10:59+03:00",
+    "title": "By Someone"
+  },
+   {
+    "type": "trend",
+    "data": {
+      "currSum": 1000,
+      "prevSum": 1
+    },
+    "layout": {
+      "columnPos": 6,
+      "h": 2,
+      "layout": "horizontal",
+      "rowPos": 0,
+      "sign": "",
+      "signAlignment": "left",
+      "style": {},
+      "w": 3
+    },
+    "fromDate": "2019-04-15T14:10:59+03:00",
+    "title": "By Someone"
+  },
+   {
+    "type": "trend",
+    "data": {
+      "currSum": -1000,
+      "prevSum": 1
+    },
+    "layout": {
+      "columnPos": 6,
+      "h": 2,
+      "layout": "horizontal",
+      "rowPos": 0,
+      "sign": "",
+      "signAlignment": "left",
+      "style": {},
+      "w": 3
+    },
+    "fromDate": "2019-04-15T14:10:59+03:00",
+    "title": "By Someone"
   }
 ]

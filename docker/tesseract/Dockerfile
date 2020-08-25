@@ -1,13 +1,11 @@
 
-FROM demisto/python3-deb:3.7.4.977
+FROM demisto/python3-deb:3.8.5.10844
 
-RUN echo 'deb http://deb.debian.org/debian stretch-backports main' >> /etc/apt/sources.list
-
-RUN apt-get update && apt-get -t stretch-backports install -y --no-install-recommends \
+RUN apt-get update && apt-get -t buster-backports install -y --no-install-recommends \
   tesseract-ocr \
   && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get -t stretch-backports install -y --no-install-recommends \
+RUN apt-get update && apt-get -t buster-backports install -y --no-install-recommends \
   tesseract-ocr-deu \
   tesseract-ocr-fra \
   tesseract-ocr-heb \
@@ -22,9 +20,10 @@ RUN apt-get update && apt-get -t stretch-backports install -y --no-install-recom
   tesseract-ocr-chi-tra-vert \
   tesseract-ocr-jpn \
   tesseract-ocr-jpn-vert \
+  && tesseract --version \
   && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get -t stretch-backports install -y --no-install-recommends \
+RUN apt-get update && apt-get -t buster-backports install -y --no-install-recommends \
   imagemagick \
   file \
   && rm -rf /var/lib/apt/lists/*
@@ -34,9 +33,9 @@ RUN apt-get update && apt-get -t stretch-backports install -y --no-install-recom
 
 # RUN apt-get update && apt-get install -y --no-install-recommends \
 #   gcc \
-#   python-dev \
+#   python3-dev \
 # && pip install --no-cache-dir -r requirements.txt \
 # && apt-get purge -y --auto-remove \
 #   gcc \
-#   python-dev \
+#   python3-dev \
 # && rm -rf /var/lib/apt/lists/*

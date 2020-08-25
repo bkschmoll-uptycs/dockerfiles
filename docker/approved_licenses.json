@@ -10,7 +10,11 @@
         {
             "name": "Apache Software License, Version 2.0",
             "url": "https://www.apache.org/licenses/LICENSE-2.0",
-            "regex": "Apache"
+            "regex": "Apache",
+            "additional_urls": [
+                "https://aka.ms/azps-license",
+                "https://raw.githubusercontent.com/Azure/azure-powershell/dev/LICENSE.txt"
+            ]
         },
         {
             "name": "MIT License",
@@ -66,6 +70,16 @@
             "name": "Artistic License",
             "url": "https://dev.perl.org/licenses/artistic.html",
             "regex": "Artistic License"
+        },
+        {
+            "name": "Unlicense",
+            "url": "https://unlicense.org",
+            "regex": "Unlicense"
+        },
+        {
+            "name": "Eclipse Public License v1.0 ",
+            "url": "https://www.eclipse.org/legal/epl-v10.html",
+            "regex": "Eclipse"
         }
     ]
 }

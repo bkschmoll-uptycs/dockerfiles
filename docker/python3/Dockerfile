@@ -1,9 +1,14 @@
-# Last modified: Sun, 30 Jun 2019 11:27:45 +0000
-FROM python:3.7.4-alpine3.10
+# Last modified: Wed, 22 Jul 2020 08:27:22 +0000
+FROM python:3.8.5-alpine3.12
+
+# Upgrade all packages to latest
+RUN apk --update --no-cache upgrade
 
 COPY requirements.txt .
 
-RUN apk --update add --no-cache --virtual .build-dependencies python-dev build-base wget \  
+COPY localtime /etc/localtime
+
+RUN apk --update add --no-cache --virtual .build-dependencies python3-dev build-base wget \
   && pip install --no-cache-dir -r requirements.txt \
   && apk del .build-dependencies
 
